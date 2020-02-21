@@ -82,11 +82,6 @@ public class ServeurHttp {
     	if (str.contains("GET")) {
     		String nom = str.split(" /")[1].split(" ")[0];
     		retourFichier(nom,dos);
-    		
-    		if (nom.contains(".htm") || nom.contains(".html")) {
-    			contentTypeLine = contentType(nom);
-	    	}
-    		
     	}
     	
     	if (str.contains("POST")) {
@@ -103,44 +98,33 @@ public class ServeurHttp {
 		
 	}
 
+	@SuppressWarnings("unused")
 	private static void retourFichier(String f, DataOutputStream data) throws IOException {
-		/*
-		 * - Si le fichier existe, on prepare les infos status, contentType,
-		 * contentLineLength qui conviennent on les envoit, et on envoit le fichier
-		 * (methode envoiFichier) 
-		 * 
-		 * - Si le fichier n'existe pas on prepare les infos qui
-		 * conviennent et on les envoit
-		 */
-		
-		if (f != null) {
-			statusLine = "fichier existe";
-			contentTypeLine = contentType(f);
-			contentLengthLine = String.valueOf(f.length());
-			envoi(statusLine + "\r\n", data);
-			envoi(serverLine + "\r\n", data);
-			envoi(contentTypeLine + "\r\n", data);
-			envoi(contentLengthLine + "\r\n", data);
-			envoi("\r\n", data);
-			
+
+		try {
 			FileInputStream fil = new FileInputStream(f);
+			statusLine = "HTTP/1.1 200 OK";
+			contentTypeLine = contentType(f);
+			contentLengthLine = "10";
+			envoi(statusLine + "\r\n", data);
+			envoi(contentTypeLine + "\r\n", data);
+			//envoi(serverLine + "\r\n", data);
+			//envoi(contentLengthLine + "\r\n", data);
+			envoi("\r\n", data);
 			envoiFichier(fil, data);
 			
-		} else {
-			statusLine = "fichier existe pas";
+		} catch(Exception e) {
+			statusLine = "HTTP/1.1 404 Page not found";
+			FileInputStream fil = new FileInputStream("page404.html");
 			contentTypeLine = contentType(f);
-			contentLengthLine = String.valueOf(f.length());
+			contentLengthLine = "10";
 			envoi(statusLine + "\r\n", data);
-			envoi(serverLine + "\r\n", data);
 			envoi(contentTypeLine + "\r\n", data);
-			envoi(contentLengthLine + "\r\n", data);
+			//envoi(serverLine + "\r\n", data);
+			//envoi(contentLengthLine + "\r\n", data);
 			envoi("\r\n", data);
-			
-			FileInputStream fil = new FileInputStream(f);
-			envoiFichier(fil, data);
-		}
-		
-		
+			envoiFichier(fil,data);
+		}	
 		
 	}
 
