@@ -10,15 +10,8 @@ public class ServeurHttp {
 	
 	static final int PORT = 1234;
 
-	// comptage du nombre de sessions
 	static int nbSessions = 0;
-
-
-	
-	
-	// chaines de caracteres formant la reponse HTTP
-	static String serverLine = "Server: Simple";
-
+	static String serverLine = "";
 	static String statusLine = null;
 	static String contentTypeLine = null;
 	static String entityBody = null;
@@ -41,8 +34,7 @@ public class ServeurHttp {
 	                (SSLServerSocketFactory)SSLServerSocketFactory.getDefault();
 	         
 			//srvk = new ServerSocket(port);
-			ServerSocket sslServerSocket = 
-                    sslServerSocketFactory.createServerSocket(port);
+			ServerSocket sslServerSocket = sslServerSocketFactory.createServerSocket(PORT);
 			while (true) {
 				System.out.println("Serveur en attente " + (nbSessions++));
 				//sck = srvk.accept();
@@ -172,13 +164,14 @@ public class ServeurHttp {
 			header = br.readLine();
 		}
 		value = Integer.parseInt(header.split(": ")[1]);
-		System.out.println("---> "+value);
+		//System.out.println("---> "+value);
 		while(!br.readLine().equals("")) {}
 		
 		String ch = "";
 		for(int i = 0; i < value; i++) {
 			ch += (char)br.read();
 		}
+		System.out.println(ch);
 		String[] args = ch.split("&");
 		
 		ArrayList<String> rep = executer(fileName, dos);
