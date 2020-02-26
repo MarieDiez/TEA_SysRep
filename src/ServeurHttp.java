@@ -9,6 +9,7 @@ import java.lang.*;
 public class ServeurHttp {
 	
 	static final int PORT = 1234;
+	static final String CGI_FOLDER = "cgi-bin";
 
 	static int nbSessions = 0;
 	static String serverLine = "";
@@ -139,10 +140,21 @@ public class ServeurHttp {
 		envoi("\r\n", os);
 	}
 
-	private static ArrayList executer(String f, DataOutputStream dos) throws IOException {
+	private static ArrayList<String> executer(String f,String parameters, DataOutputStream dos) throws IOException {
 		ArrayList<String> rep = new ArrayList<String>();
 		try {
-			Process p = Runtime.getRuntime().exec("./"+f);
+			ProcessBuilder pb = new ProcessBuilder("./"+CGI_FOLDER+"/"+f);
+			Map<String, String> mp = pb.environment();
+			mp.clear();
+			mp.put("REQUEST_METHOD", "POST");
+			Process p = pb.start();
+			
+			System.out.println(parameters);
+			OutputStream o = p.getOutputStream();
+			o.write(parameters.getBytes());
+			o.close();
+		
+			
             BufferedReader in = new BufferedReader(
                                 new InputStreamReader(p.getInputStream()));
             String line = null;
@@ -164,17 +176,14 @@ public class ServeurHttp {
 			header = br.readLine();
 		}
 		value = Integer.parseInt(header.split(": ")[1]);
-		//System.out.println("---> "+value);
 		while(!br.readLine().equals("")) {}
 		
 		String ch = "";
 		for(int i = 0; i < value; i++) {
 			ch += (char)br.read();
 		}
-		System.out.println(ch);
-		String[] args = ch.split("&");
 		
-		ArrayList<String> rep = executer(fileName, dos);
+		ArrayList<String> rep = executer(fileName, ch, dos);
 		
 		statusLine = "HTTP/1.1 200 OK";
 		envoi(statusLine + "\r\n", dos);
