@@ -4,10 +4,15 @@ import java.util.*;
 import java.lang.*;
 
 public class ServeurHttp {
+	
+	static final int PORT = 1234;
 
 	// comptage du nombre de sessions
 	static int nbSessions = 0;
 
+
+	
+	
 	// chaines de caracteres formant la reponse HTTP
 	static String serverLine = "Server: Simple";
 
@@ -20,27 +25,47 @@ public class ServeurHttp {
 	// (utilisee dans la methode debug(s,n)
 	static final int DEBUG = 255;
 
-	// Lancement du serveur // Le serveur est en boucle infinie, et ne s'arrete que
-	// si il y a une // erreur d'Entree/Sortie. Il y a fermeture de socket apres
-	// chaque // requete.
-	public static void go(int port) {
+	public static void main(String args[]) throws IOException {
 		Socket sck = null;
 		ServerSocket srvk;
 		DataOutputStream os = null;
 		BufferedReader br = null;
 		try {
-			srvk = new ServerSocket(port);
+			srvk = new ServerSocket(PORT);
 			while (true) {
 				System.out.println("Serveur en attente " + (nbSessions++));
 				sck = srvk.accept();
-				os = new DataOutputStream(sck.getOutputStream());
-				br = new BufferedReader(new InputStreamReader(sck.getInputStream()));
+				os = getWriter(sck);
+				br = getReader(sck);
+				
 				traiterRequete(br, os);
+				
 				sck.close();
 			}
 		} catch (IOException e) {
 			System.out.println("ERREUR IO" + e);
 		}
+		System.out.println("ARRET DU SERVEUR");
+	}
+	
+	private static BufferedReader getReader(Socket sock) {
+		InputStream in = null;
+		try {
+			in = sock.getInputStream();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return new BufferedReader(new InputStreamReader(in));
+	}
+
+	private static DataOutputStream getWriter(Socket sock) {
+		OutputStream out = null;
+		try {
+			out = sock.getOutputStream();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return new DataOutputStream(out);
 	}
 
 	// Methode utile pour demander ou non des print de Trace a l'execution
@@ -57,67 +82,51 @@ public class ServeurHttp {
 	}
 
 	public static void traiterRequete(BufferedReader br, DataOutputStream dos) throws IOException {
-		/*
-		 * Cette methode lit des lignes sur br (utiliser LireLigne) et recherche une
-		 * ligne commencant par GET ou par POST.
-		 * 
-		 * Si la ligne commence par GET : - on extrait le nom de fichier demande dans la
-		 * ligne et on appelle la methode retourFichier. - Si le suffixe du nom de
-		 * fichier est .htm ou .html (utiliser la methode contentType) - on lit ensuite
-		 * toutes les lignes qui suivent jusqu'a entrouver une vide, nulle ou contenant
-		 * juste "\n\r"
-		 * 
-		 * Si la ligne commence par POST : - on extrait le nom de fichier demande dans
-		 * la ligne et on appelle la methode retourFichier. - Si le suffixe du nom de
-		 * fichier est .htm ou .html, on fait la meme chose que ci-dessus pour GET - Si
-		 * le suffixe est autre, on appelle la methode retourCGIPOST
-		 */
-		String str;
-		str = lireLigne("", br);
+	String headLine;
+	headLine = br.readLine();
 
-		if (str.contains("GET")) {
-			String nom = str.split(" /")[1].split(" ")[0];
-			retourFichier(nom, dos);
-		}
-
-		if (str.contains("POST")) {
-			String nom = str.split(" /")[1].split("/ ")[0];
-			if (nom.contains(".htm") || nom.contains(".html")) {
-				retourFichier(nom, dos);
+	if (headLine.contains("GET")) {
+		String askedFile = headLine.split(" /")[1].split(" ")[0];
+		retourFichier(askedFile, dos);
+		
+	}else if (headLine.contains("POST")) {
+		String askedFile = headLine.split(" /")[1].split("/ ")[0];
+		if (askedFile.contains(".htm") || askedFile.contains(".html")) {
+				retourFichier(askedFile, dos);
 			} else {
-				for(int i = 0 ; i < 13; i++) {
-					str = lireLigne(i+" :", br);				
+				for(int i = 0 ; i < 20 ; i++) {
+					headLine = lireLigne(i+" :", br);					
 				}
-				retourCGIPOST(nom, br, dos);
+				retourCGIPOST(askedFile, br, dos);
 			}
-		}	
+		}
 
 	}
 
 	@SuppressWarnings("unused")
-	private static void retourFichier(String f, DataOutputStream data) throws IOException {
-
+	private static void retourFichier(String path, DataOutputStream os) throws IOException {
+		System.out.println(path);
 		try {
-			FileInputStream fil = new FileInputStream(f);
+			FileInputStream fil = new FileInputStream(path);
 			statusLine = "HTTP/1.1 200 OK";
-			contentTypeLine = contentType(f);
+			contentTypeLine = contentType(path);
 			contentLengthLine = String.valueOf(fil.available());
-			envoi(statusLine + "\r\n", data);
-			envoi(contentTypeLine + "\r\n", data);
-			envoi(contentLengthLine + "\r\n", data);
-			envoi("\r\n", data);
-			envoiFichier(fil, data);
+			envoi(statusLine + "\r\n", os);
+			envoi(contentTypeLine + "\r\n", os);
+			envoi(contentLengthLine + "\r\n", os);
+			envoi("\r\n", os);
+			envoiFichier(fil, os);
 
 		} catch (Exception e) {
 			statusLine = "HTTP/1.1 404 Page not found";
 			FileInputStream fil = new FileInputStream("page404.html");
 			contentTypeLine = "text/html";
 			contentLengthLine = String.valueOf(fil.available());
-			envoi(statusLine + "\r\n", data);
-			envoi(contentTypeLine + "\r\n", data);
-			envoi(contentLengthLine + "\r\n", data);
-			envoi("\r\n", data);
-			envoiFichier(fil, data);
+			envoi(statusLine + "\r\n", os);
+			envoi(contentTypeLine + "\r\n", os);
+			envoi(contentLengthLine + "\r\n", os);
+			envoi("\r\n", os);
+			envoiFichier(fil, os);
 		}
 
 	}
@@ -165,8 +174,8 @@ public class ServeurHttp {
 		}
 	}
 
-	private static void envoi(String m, DataOutputStream dos) throws IOException {
-		dos.write(m.getBytes());
+	private static void envoi(String m, DataOutputStream os) throws IOException {
+		os.write(m.getBytes());
 	}
 
 	private static void entete(DataOutputStream dos) throws IOException {
@@ -182,10 +191,5 @@ public class ServeurHttp {
 			return "text/html";
 		}
 		return "";
-	}
-
-	public static void main(String args[]) throws IOException {
-		go(1234);
-		System.out.println("ARRET DU SERVEUR");
 	}
 }
