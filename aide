@@ -1,0 +1,4 @@
+setProperty + sslSoket ? 
+
+1 - Creer jks + cert
+2 - importer un certificat émis dans le keystore

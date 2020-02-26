@@ -1,6 +1,9 @@
 import java.net.*;
 import java.io.*;
 import java.util.*;
+
+import javax.net.ssl.SSLServerSocketFactory;
+
 import java.lang.*;
 
 public class ServeurHttp {
@@ -30,17 +33,24 @@ public class ServeurHttp {
 		ServerSocket srvk;
 		DataOutputStream os = null;
 		BufferedReader br = null;
+		System.setProperty("javax.net.ssl.keyStore", "../certificate.jks");
+		System.setProperty("javax.net.ssl.keyStorePassword", "mdpmdp");
+		
 		try {
-			srvk = new ServerSocket(PORT);
+			SSLServerSocketFactory sslServerSocketFactory = 
+	                (SSLServerSocketFactory)SSLServerSocketFactory.getDefault();
+	         
+			//srvk = new ServerSocket(port);
+			ServerSocket sslServerSocket = 
+                    sslServerSocketFactory.createServerSocket(port);
 			while (true) {
 				System.out.println("Serveur en attente " + (nbSessions++));
-				sck = srvk.accept();
-				os = getWriter(sck);
-				br = getReader(sck);
-				
+				//sck = srvk.accept();
+				Socket sck1 = sslServerSocket.accept();
+				os = getWriter(sck1);
+				br = getReader(sck1);
 				traiterRequete(br, os);
-				
-				sck.close();
+				sck1.close();
 			}
 		} catch (IOException e) {
 			System.out.println("ERREUR IO" + e);
