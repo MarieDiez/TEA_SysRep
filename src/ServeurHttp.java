@@ -83,23 +83,12 @@ public class ServeurHttp {
 		if (str.contains("POST")) {
 			String nom = str.split(" /")[1].split("/ ")[0];
 			if (nom.contains(".htm") || nom.contains(".html")) {
-				// traiter requete comme GET
 				retourFichier(nom, dos);
 			} else {
-				// traiter script cgi .pl
-				System.out.println(nom);
-				for(int i = 0 ; i < 20 ; i++) {
-					str = lireLigne(i+" :", br);					
+				for(int i = 0 ; i < 13; i++) {
+					str = lireLigne(i+" :", br);				
 				}
 				retourCGIPOST(nom, br, dos);
-				/*
-				 * Un exemple de programme CGI est celui qui fait fonctionner l'annuaire web
-				 * Open Directory Project. Lorsqu'un visiteur soumet une requête au site web, le
-				 * serveur HTTP transmet par CGI le terme qui a été saisi dans le formulaire de
-				 * la page web. Le programme CGI cherche alors dans sa base de données tous les
-				 * sites contenant le terme, crée un document HTML contenant les résultats et le
-				 * retourne au serveur HTTP qui va la transmettre au navigateur web.
-				 */
 			}
 		}	
 
@@ -122,7 +111,7 @@ public class ServeurHttp {
 		} catch (Exception e) {
 			statusLine = "HTTP/1.1 404 Page not found";
 			FileInputStream fil = new FileInputStream("page404.html");
-			contentTypeLine = contentType(f);
+			contentTypeLine = "text/html";
 			contentLengthLine = String.valueOf(fil.available());
 			envoi(statusLine + "\r\n", data);
 			envoi(contentTypeLine + "\r\n", data);
@@ -142,43 +131,38 @@ public class ServeurHttp {
 		envoi("\r\n", os);
 	}
 
-	private static String executer(String f, DataOutputStream dos) throws IOException {
-		FileInputStream fil = new FileInputStream(f);
-		contentTypeLine = contentType(f);
-		statusLine = "HTTP/1.1 200 OK";
-		contentLengthLine = String.valueOf(fil.available());
-		envoi(statusLine + "\r\n", dos);
-		envoi(serverLine + "\r\n", dos);
-		envoi(contentTypeLine + "\r\n", dos);
-		envoi(contentLengthLine + "\r\n", dos);
-		envoi("\r\n", dos);
-		envoiFichier(fil, dos);
-		return statusLine +"\n"+ contentTypeLine +"\n";
+	private static ArrayList executer(String f, DataOutputStream dos) throws IOException {
+		ArrayList<String> rep = new ArrayList<String>();
+		try {
+			Process p = Runtime.getRuntime().exec("./cgi-bin/test.cgi");
+            BufferedReader in = new BufferedReader(
+                                new InputStreamReader(p.getInputStream()));
+            String line = null;
+            while ((line = in.readLine()) != null) {
+                rep.add(line);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+		return rep;
 	}
 
-	private static void retourCGIPOST(String f, BufferedReader br, DataOutputStream dos) throws IOException {
-		/*
-		 * On lit toutes les lignes jusqu'a trouver une ligne commencant par
-		 * Content-Length Lorsque cette ligne est trouvee, on extrait le nombre qui
-		 * suit(nombre de caracteres a lire). On lit une ligne vide On lit les
-		 * caracteres dont le nombre a ete trouve ci-dessus on les range dans une
-		 * chaine, On appelle la methode 'executer' en lui donnant comme parametre une
-		 * chaine qui est la concatenation du nom de fichier, d'un espace et de la
-		 * chaine de parametres. 'executer' retourne une chaine qui est la reponse ‡
-		 * renvoyer au client, apres avoir envoye les infos status, contentTypeLine,
-		 * ....
-		 */
-		/*String str;
-		while (!(str = lireLigne("", br)).contains("Content-length")) {
-			int contentLength = Integer.valueOf(str);
-			lireLigne("", br);
-			char[] buff = new char[contentLength];
-			System.out.println(br.read(buff));
-
-		}*/
-		
+	private static void retourCGIPOST(String f, BufferedReader br, DataOutputStream dos) throws IOException {		
 		String nom = f.split(" ")[0];
-		executer(nom, dos);
+		ArrayList<String> rep = executer(nom, dos);
+		
+		statusLine = "HTTP/1.1 200 OK";
+		envoi(statusLine + "\r\n", dos);
+		envoi(contentLengthLine + "\r\n", dos);
+		contentTypeLine = rep.get(0).split(" ")[1];
+		envoi(contentTypeLine + "\r\n", dos);
+		envoi("\r\n", dos);
+		
+		rep.remove(0);
+		for (String line:rep){
+			envoi(line+"\r\n",dos);
+			
+		}
 	}
 
 	private static void envoi(String m, DataOutputStream dos) throws IOException {
