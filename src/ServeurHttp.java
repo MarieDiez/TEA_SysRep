@@ -94,9 +94,6 @@ public class ServeurHttp {
 		if (askedFile.contains(".htm") || askedFile.contains(".html")) {
 				retourFichier(askedFile, dos);
 			} else {
-				for(int i = 0 ; i < 20 ; i++) {
-					headLine = lireLigne(i+" :", br);					
-				}
 				retourCGIPOST(askedFile, br, dos);
 			}
 		}
@@ -143,7 +140,7 @@ public class ServeurHttp {
 	private static ArrayList executer(String f, DataOutputStream dos) throws IOException {
 		ArrayList<String> rep = new ArrayList<String>();
 		try {
-			Process p = Runtime.getRuntime().exec("./cgi-bin/test.cgi");
+			Process p = Runtime.getRuntime().exec("./"+f);
             BufferedReader in = new BufferedReader(
                                 new InputStreamReader(p.getInputStream()));
             String line = null;
@@ -156,9 +153,25 @@ public class ServeurHttp {
 		return rep;
 	}
 
-	private static void retourCGIPOST(String f, BufferedReader br, DataOutputStream dos) throws IOException {		
-		String nom = f.split(" ")[0];
-		ArrayList<String> rep = executer(nom, dos);
+	private static void retourCGIPOST(String f, BufferedReader br, DataOutputStream dos) throws IOException {
+		
+		String fileName = f.split(" ")[0];
+		int value = 0;
+		String header = br.readLine();
+		while(!header.split(": ")[0].equals("Content-Length")) {
+			header = br.readLine();
+		}
+		value = Integer.parseInt(header.split(": ")[1]);
+		System.out.println("---> "+value);
+		while(!br.readLine().equals("")) {}
+		
+		String ch = "";
+		for(int i = 0; i < value; i++) {
+			ch += (char)br.read();
+		}
+		String[] args = ch.split("&");
+		
+		ArrayList<String> rep = executer(fileName, dos);
 		
 		statusLine = "HTTP/1.1 200 OK";
 		envoi(statusLine + "\r\n", dos);
