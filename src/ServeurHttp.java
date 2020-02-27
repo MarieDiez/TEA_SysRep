@@ -8,47 +8,40 @@ import java.lang.*;
 
 public class ServeurHttp {
 	
-	static final int PORT = 1234;
 	static final String CGI_FOLDER = "cgi-bin";
-
 	static int nbSessions = 0;
 	static String serverLine = "";
 	static String statusLine = null;
 	static String contentTypeLine = null;
 	static String entityBody = null;
 	static String contentLengthLine = null;
-
-	// constante a positionner pour controler le niveau d'impressions // de controle
-	// (utilisee dans la methode debug(s,n)
 	static final int DEBUG = 255;
+	static final int PORT = 1234;
 
 	public static void main(String args[]) throws IOException {
-		Socket sck = null;
-		ServerSocket srvk;
-		DataOutputStream os = null;
-		BufferedReader br = null;
 		System.setProperty("javax.net.ssl.keyStore", "../certificate.jks");
 		System.setProperty("javax.net.ssl.keyStorePassword", "mdpmdp");
-		
+		ServerSocket sslServerSocket = null;
+		SSLServerSocketFactory sslServerSocketFactory = (SSLServerSocketFactory) SSLServerSocketFactory.getDefault();
 		try {
-			SSLServerSocketFactory sslServerSocketFactory = 
-	                (SSLServerSocketFactory)SSLServerSocketFactory.getDefault();
-	         
-			//srvk = new ServerSocket(port);
-			ServerSocket sslServerSocket = sslServerSocketFactory.createServerSocket(PORT);
-			while (true) {
-				System.out.println("Serveur en attente " + (nbSessions++));
-				//sck = srvk.accept();
-				Socket sck1 = sslServerSocket.accept();
-				os = getWriter(sck1);
-				br = getReader(sck1);
-				traiterRequete(br, os);
-				sck1.close();
-			}
-		} catch (IOException e) {
-			System.out.println("ERREUR IO" + e);
+			sslServerSocket = sslServerSocketFactory.createServerSocket(PORT);
+		} catch (IOException e1) {
+			e1.printStackTrace();
 		}
-		System.out.println("ARRET DU SERVEUR");
+		while (true) {
+			try {
+				System.out.println("Serveur en attente " + (nbSessions++));
+				Socket sck1 = sslServerSocket.accept();
+				DataOutputStream os = getWriter(sck1);
+				BufferedReader br = getReader(sck1);
+				Traitement trait = new Traitement(os,br,sck1);
+				trait.start();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+
+		}
+		
 	}
 	
 	private static BufferedReader getReader(Socket sock) {
@@ -70,8 +63,7 @@ public class ServeurHttp {
 		}
 		return new DataOutputStream(out);
 	}
-
-	// Methode utile pour demander ou non des print de Trace a l'execution
+	
 	public static void debug(String s, int n) {
 		if ((DEBUG & n) != 0)
 			System.out.println("(" + n + ")" + s);
@@ -105,7 +97,6 @@ public class ServeurHttp {
 
 	@SuppressWarnings("unused")
 	private static void retourFichier(String path, DataOutputStream os) throws IOException {
-		System.out.println(path);
 		try {
 			FileInputStream fil = new FileInputStream(path);
 			statusLine = "HTTP/1.1 200 OK";
